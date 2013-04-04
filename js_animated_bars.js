@@ -2,44 +2,35 @@
 var labels = getLabels();
 var populations = getPopulations(); //already ordered
 var extensions = getExtensions(); //already ordered
-var topWidth;
-var barIDs = [];
-for (key in labels) { barIDs.push(key); }
+var topLength;
 
-var barHtmlTemplate = '<div id="label_id" class="bar_group"><div class="name">label_txt</div><div class="bar_wrapper"><div class="bar" style="background-color:[background-color]; width: [width]%;"><div class="bar_label">[data]</div></div></div></div>';
+var dimension = "width";
+// change to "height" to use verical bars (also update the CSS!)
+//var dimension = "height";
+
+// the bar template string
+var barHtmlTemplate = '<div id="[label_id]" class="bar_group"><div class="name">[label_txt]</div><div class="bar_wrapper"><div class="bar" style="background-color:[background-color]; '+
+                        dimension+': [lenght]%;"><div class="bar_label">[data]</div></div></div></div>';
 
 
-function getColor(length) {
-    return "hsla("+ Math.round(length*2.2) +",100%,"+ getLightness(length) +"%,0.65)";
-}
 
-function getLightness(length){
-    if(length < 50)
-        return 50-(Math.round(length/3.4));
-    else
-        return 0+(Math.round(length/2));
-}
 
-//q is the volume
-function getLength(q){
-    var relLength = (q/topWidth)*90 + 10;
-    return relLength;
+/**
+ * returns the HTML string for a specific bar given its characteristics
+ */
+function buildBarHtml(barID,length,color,data){
+    return barHtmlTemplate.replace('[label_id]', barID)
+                        .replace('[label_txt]',labels[barID])
+                        .replace('[data]', data)
+                        .replace('[background-color]', color)
+                        .replace('[lenght]', length);
 }
 
 /**
- * returns the HTML for a specific bar given the textual ID of the item.
+ * kickstarts the bar list assembling them all
  */
-function buildBarHtml(barID,length,color,data){
-    return barHtmlTemplate.replace('label_id', barID)
-                        .replace('label_txt',labels[barID])
-                        .replace('[data]', data)
-                        .replace('[background-color]', color)
-                        .replace('[width]', length);
-}
-
-
 function buildAllBars(){
-    topWidth = getTheHighest(populations);
+    topLength = getTheHighest(populations);
     $("#populations_switch").addClass("selected");
 
     var allBarsHTML = "";
@@ -54,8 +45,10 @@ function buildAllBars(){
     return allBarsHTML;
 }
 
-
-function reorderBy(event){
+/**
+ * updates the bars
+ */
+function updateBars(event){
     $(".switch").removeClass("selected");
     $(event.target).addClass("selected");
     if($(event.target).attr("id") === "extensions_switch")
@@ -64,20 +57,40 @@ function reorderBy(event){
         $("#what").html("Population, in units");
 
     var list = event.data;
-    topWidth = getTheHighest(list);
+    topLength = getTheHighest(list);
     var length, data;
 
     for(key in list){
         data = list[key];
         length = getLength(list[key]);
         $("#"+key).find(".bar")
-                .css("width", length+"%")
+                .css(dimension, length+"%")
                 .css("background-color",getColor(length))
                 .find(".bar_label").html(data);
     }
 }
 
 
+
+/**
+ * 
+ */
+$(document).ready(function(e){
+    var allBars = buildAllBars();
+    $("#bars_container").html(allBars);
+
+    $("#populations_switch").click(populations, updateBars);
+    $("#extensions_switch").click(extensions, updateBars);
+});
+
+
+
+// ---------------------------------
+// business methods
+
+/**
+ * returns the highest value in the set of data being used
+ */
 function getTheHighest(list) {
     var top;
     for(key in list){
@@ -87,11 +100,23 @@ function getTheHighest(list) {
     return top;
 }
 
+/**
+ * Returns the color given the length of the bar
+ */
+function getColor(length) {
+    var hue, lightness;
 
-$(document).ready(function(e){
-    var allBars = buildAllBars();
-    $("#bars_container").html(allBars);
+    hue = Math.round(length*2.2);
+    if(length < 50) { lightness = 50-(Math.round(length/3.4)); }
+    else { lightness = 0+(Math.round(length/2)); }
 
-    $("#populations_switch").click(populations, reorderBy);
-    $("#extensions_switch").click(extensions, reorderBy);
-});
+    return "hsla("+ hue +",100%,"+ lightness +"%,0.65)";
+}
+
+/**
+ * Returns length (as %) of the bar given the absolute value represented
+ */
+function getLength(q){
+    var relLength = (q/topLength)*90 + 10;
+    return relLength;
+}
